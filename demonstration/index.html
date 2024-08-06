@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Blog Platform</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #1877f2;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #1877f2;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #166fe5;
+        }
+        #posts {
+            margin-top: 20px;
+        }
+        .post {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .post h3 {
+            margin-top: 0;
+            color: #1877f2;
+        }
+        .like-btn {
+            background: #42b72a;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        #userInfo {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .comments {
+            margin-top: 10px;
+            padding-left: 20px;
+            border-left: 2px solid #1877f2;
+        }
+        .comment {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .comment-form {
+            margin-top: 10px;
+        }
+        .comment-form textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 5px;
+        }
+        .comment-form button {
+            padding: 5px 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loginRegisterForm">
+            <h1>Login / Register</h1>
+            <form id="authForm">
+                <input type="email" id="email" placeholder="Email" required>
+                <input type="text" id="username" placeholder="Username (for registration)" required>
+                <input type="password" id="password" placeholder="Password" required>
+                <button type="submit" id="loginBtn">Login</button>
+                <button type="button" id="registerBtn">Register</button>
+            </form>
+        </div>
+
+        <div id="blogContent" style="display: none;">
+            <header>
+                <h1>Simple Blog Platform</h1>
+                <div id="userInfo"></div>
+                <button id="logoutBtn">Logout</button>
+            </header>
+            
+            <div id="posts"></div>
+
+            <form id="newPostForm">
+                <h2>Create a New Post</h2>
+                <input type="text" id="postTitle" placeholder="Title" required>
+                <textarea id="postContent" placeholder="Content" required></textarea>
+                <button type="submit">Create Post</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const authForm = document.getElementById('authForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const registerBtn = document.getElementById('registerBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const newPostForm = document.getElementById('newPostForm');
+
+            authForm.addEventListener('submit', handleLogin);
+            registerBtn.addEventListener('click', handleRegister);
+            logoutBtn.addEventListener('click', handleLogout);
+            newPostForm.addEventListener('submit', handleNewPost);
+
+            checkLoggedInStatus();
+        });
+
+        function checkLoggedInStatus() {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+                currentUser = JSON.parse(userJson);
+                showBlogContent();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    localStorage.setItem('user', JSON.stringify(user));
+                    currentUser = user;
+                    showBlogContent();
+                } else {
+                    const errorData = await response.json();
+                    alert(errorData.error || 'Login failed. Please check your credentials.');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('An error occurred during login. Please try again later.');
+            }
+        }
+
+        async function handleRegister() {
+            const email = document.getElementById('email').value;
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, username, password })
+                });
+
+                if (response.ok) {
+                    alert('Registration successful! Please login.');
+                    document.getElementById('authForm').reset();
+                } else {
+                    const errorData = await response.json();
+                    alert(errorData.error || 'Registration failed. Please try again.');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('An error occurred during registration. Please try again later.');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('user');
+            currentUser = null;
+            showLoginForm();
+        }
+
+        function showBlogContent() {
+            document.getElementById('loginRegisterForm').style.display = 'none';
+            document.getElementById('blogContent').style.display = 'block';
+            document.getElementById('userInfo').textContent = `Welcome, ${currentUser.username}!`;
+            fetchPosts();
+        }
+
+        function showLoginForm() {
+            document.getElementById('loginRegisterForm').style.display = 'block';
+            document.getElementById('blogContent').style.display = 'none';
+        }
+
+        async function fetchPosts() {
+            try {
+                const response = await fetch(`${API_URL}/posts`);
+                const posts = await response.json();
+                const postsContainer = document.getElementById('posts');
+                postsContainer.innerHTML = '';
+                posts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.className = 'post';
+                    postElement.innerHTML = `
+                        <h3>${post.title}</h3>
+                        <p>${post.content}</p>
+                        <p>Author: ${post.author ? post.author.username : 'Unknown'}</p>
+                        <p>Likes: ${post.likes ? post.likes.length : 0}</p>
+                        <button class="like-btn" onclick="likePost(${post.id})">Like</button>
+                        <div class="comments">
+                            <h4>Comments:</h4>
+                            ${post.comments && post.comments.length > 0 ? post.comments.map(comment => `
+                                <div class="comment">
+                                    <p>${comment.content}</p>
+                                    <small>By: ${comment.author ? comment.author.username : 'Unknown'}</small>
+                                </div>
+                            `).join('') : '<p>No comments yet.</p>'}
+                        </div>
+                        <form class="comment-form" onsubmit="addComment(event, ${post.id})">
+                            <textarea placeholder="Add a comment" required></textarea>
+                            <button type="submit">Add Comment</button>
+                        </form>
+                    `;
+                    postsContainer.appendChild(postElement);
+                });
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            }
+        }
+        
+        async function likePost(postId) {
+            try {
+                const response = await fetch(`${API_URL}/likes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userId: currentUser.id, postId }),
+                });
+                if (response.ok) {
+                    fetchPosts();
+                }
+            } catch (error) {
+                console.error('Error liking post:', error);
+            }
+        }
+
+        async function handleNewPost(e) {
+            e.preventDefault();
+            const title = document.getElementById('postTitle').value;
+            const content = document.getElementById('postContent').value;
+
+            try {
+                const response = await fetch(`${API_URL}/posts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ title, content, authorId: currentUser.id }),
+                });
+                if (response.ok) {
+                    fetchPosts();
+                    document.getElementById('newPostForm').reset();
+                }
+            } catch (error) {
+                console.error('Error creating post:', error);
+            }
+        }
+
+        async function addComment(event, postId) {
+            event.preventDefault();
+            const form = event.target;
+            const content = form.querySelector('textarea').value;
+
+            try {
+                const response = await fetch(`${API_URL}/comments`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content, authorId: currentUser.id, postId }),
+                });
+                if (response.ok) {
+                    form.reset();
+                    fetchPosts();  // Refresh posts to show the new comment
+                } else {
+                    const errorData = await response.json();
+                    alert(errorData.error || 'Failed to add comment. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error adding comment:', error);
+                alert('An error occurred while adding the comment. Please try again later.');
+            }
+        }
+    </script>
+</body>
+</html>
